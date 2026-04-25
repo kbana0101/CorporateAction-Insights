@@ -1,4 +1,6 @@
 // app/api/ingest/route.ts
+export const dynamic = 'force-dynamic';
+
 import { indexConfig } from '@/constants/graphConfigs';
 import { langGraphServerClient } from '@/lib/langgraph-server';
 import { processPDF } from '@/lib/pdf';

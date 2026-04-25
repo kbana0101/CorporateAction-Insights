@@ -1,12 +1,12 @@
 import { Client } from '@langchain/langgraph-sdk';
 import { LangGraphBase } from './langgraph-base';
 
-// Server client singleton instance
+// Server client singleton instance — lazily initialised on first request
 let clientInstance: LangGraphBase | null = null;
 
 /**
- * Creates or returns a singleton instance of the LangGraph client for server-side use
- * @returns LangGraph Client instance
+ * Creates or returns a singleton instance of the LangGraph client for server-side use.
+ * Must be called at request time, not at module load time.
  */
 export const createServerClient = () => {
   if (clientInstance) {
@@ -33,5 +33,12 @@ export const createServerClient = () => {
   return clientInstance;
 };
 
-// Export all methods from the base class instance
-export const langGraphServerClient = createServerClient();
+/**
+ * Lazy proxy for the server client — safe to import at module level.
+ * Actual initialisation is deferred until the first property access (request time).
+ */
+export const langGraphServerClient = new Proxy({} as LangGraphBase, {
+  get(_target, prop) {
+    return (createServerClient() as any)[prop];
+  },
+});
