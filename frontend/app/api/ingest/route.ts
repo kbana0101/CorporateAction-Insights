@@ -53,10 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const docId = null;
-    if(metadata){
-      const docId = metadata.doc_id;
-    }
+    const docId = metadata?.doc_id ?? null;
       
 
     /*if (!docId) {
