@@ -28,7 +28,7 @@
     "@langchain/community": "^0.3.26",
     "@langchain/core": "^0.3.32",
     "@langchain/langgraph": "^0.2.41",
-    "@langchain/langgraph-cli": "^0.0.1",
+    "@langchain/langgraph-cli": "^1.1.17",
     "@langchain/langgraph-sdk": "^0.0.36",
     "@langchain/openai": "^0.3.17",
     "@mendable/firecrawl-js": "^1.15.7",
