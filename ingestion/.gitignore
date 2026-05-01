@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/xbrl_files/*.xml
+data/pdfs/*.pdf
+log.txt

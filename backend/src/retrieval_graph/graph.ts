@@ -21,7 +21,7 @@ async function checkQueryType(
   //schema for routing
   const schema = z.object({
     route: z.enum(['retrieve', 'direct']),
-    directAnswer: z.string().optional(),
+    directAnswer: z.string().optional().nullable(),
   });
 
   const configuration = ensureAgentConfiguration(config);

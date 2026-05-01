@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import type React from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from "next/navigation";
 import { useToast } from '@/hooks/use-toast';
 import { useRef, useState, useEffect } from 'react';
@@ -19,6 +22,14 @@ import {
 } from '@/types/graphTypes';
 import { Card, CardContent } from '@/components/ui/card';
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <ChatPage />
+    </Suspense>
+  );
+}
+
+function ChatPage() {
   const { toast } = useToast(); // Add this hook
   const [messages, setMessages] = useState<
     Array<{
@@ -423,5 +434,5 @@ export default function Home() {
       </div>
     </main>
   );
-}
+}  // end ChatPage
 

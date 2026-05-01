@@ -1,0 +1,66 @@
+services:
+
+  # ── LangGraph backend (port 2024) ──────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "2024:2024"
+    env_file:
+      - ./backend/.env          # copy from backend/.env.example and fill in
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2024/openapi.json"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ── Next.js frontend (port 3000) ───────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # NEXT_PUBLIC_* is baked in at build time; must match your backend URL.
+        # When using this Compose file locally, the browser reaches the backend
+        # via the published port on the host, so use localhost:2024 here.
+        NEXT_PUBLIC_LANGGRAPH_API_URL: "http://localhost:2024"
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Python ingestion pipeline (one-shot runner) ────────────────────────────
+  ingestion:
+    build:
+      context: ./ingestion
+      dockerfile: Dockerfile
+    env_file:
+      - ./ingestion/.env         # copy from ingestion/.env.example and fill in
+    environment:
+      # Point at the frontend container's ingest API using the service name
+      INGEST_API_URL: "http://frontend:3000/api/ingest"
+      # Data dirs inside the container
+      XBRL_DIR: "/app/data/xbrl_files"
+      PDF_DIR: "/app/data/pdfs"
+    volumes:
+      # Persist downloaded XBRL files and PDFs across runs
+      - ingestion_xbrl:/app/data/xbrl_files
+      - ingestion_pdfs:/app/data/pdfs
+    depends_on:
+      - frontend
+    # The ingestion pipeline runs to completion and exits.
+    # Remove the profile to run it automatically with `docker compose up`.
+    profiles:
+      - ingestion
+    restart: "no"
+
+volumes:
+  ingestion_xbrl:
+  ingestion_pdfs:
