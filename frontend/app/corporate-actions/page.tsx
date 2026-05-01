@@ -1,24 +1,17 @@
 import CorporateActionsTable from "./CorporateActionsTable";
+import { getCorporateActions } from "./getCorporateActions";
+
+export const dynamic = "force-dynamic";
 
 export default async function CorporateActionsPage() {
-  let actions = [];
+  let actions: string | any[] = [];
   let fetchError: string | null = null;
 
   try {
-    const res = await fetch(
-      "http://localhost:3000/api/corporate-actions",
-      { cache: "no-store" }
-    );
-
-    const json = await res.json();
-
-    if (!res.ok || !Array.isArray(json)) {
-      fetchError = json?.error ?? "Failed to load corporate actions.";
-    } else {
-      actions = json;
-    }
-  } catch {
-    fetchError = "Could not reach the server. Please try again later.";
+    actions = await getCorporateActions();
+  } catch (err) {
+    fetchError =
+      err instanceof Error ? err.message : "Failed to load corporate actions.";
   }
 
   return (
