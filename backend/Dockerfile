@@ -26,5 +26,5 @@ WORKDIR /app/backend
 
 EXPOSE 2024
 
-# langgraph.json points to .env for secrets — injected via Compose env_file
-CMD ["npx", "@langchain/langgraph-cli", "dev", "--host", "0.0.0.0", "--port", "2024"]
+# PORT is injected by Render (or any cloud host); falls back to 2024 locally
+CMD ["sh", "-c", "npx @langchain/langgraph-cli dev --host 0.0.0.0 --port ${PORT:-2024}"]

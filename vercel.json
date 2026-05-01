@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd frontend && yarn install --ignore-engines && yarn build",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "echo 'skip root install'",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/$1" }
+  ]
+}
