@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "installCommand": "yarn install --ignore-engines",
+  "buildCommand": "yarn build",
+  "outputDirectory": ".next"
+}
