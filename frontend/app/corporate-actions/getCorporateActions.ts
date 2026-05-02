@@ -7,7 +7,7 @@ export async function getCorporateActions() {
   );
 
   //const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-  const today = "2025-12-24";
+  const today = new Date().toISOString().split("T")[0];
 
   const { data, error } = await supabase
     .from("corporate_actions")
