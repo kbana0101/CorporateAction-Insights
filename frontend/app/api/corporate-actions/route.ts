@@ -9,8 +9,8 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
   try {
-    //const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const today = "2025-12-24";
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    //const today = "2025-12-24";
 
     const { data, error } = await supabase
       .from("corporate_actions")
