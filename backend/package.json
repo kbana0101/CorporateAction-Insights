@@ -22,13 +22,13 @@
     "lint:fix": "eslint src --fix",
     "lint:langgraph-json": "node scripts/checkLanggraphPaths.js",
     "lint:all": "yarn lint & yarn lint:langgraph-json",
-    "langgraph:dev": "npx @langchain/langgraph-cli dev"
+    "langgraph:dev": "langgraphjs dev"
   },
   "dependencies": {
     "@langchain/community": "^0.3.26",
     "@langchain/core": "^0.3.32",
     "@langchain/langgraph": "^0.2.41",
-    "@langchain/langgraph-cli": "^1.1.17",
+    "@langchain/langgraph-cli": "1.1.17",
     "@langchain/langgraph-sdk": "^0.0.36",
     "@langchain/openai": "^0.3.17",
     "@mendable/firecrawl-js": "^1.15.7",

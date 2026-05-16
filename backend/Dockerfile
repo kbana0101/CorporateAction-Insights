@@ -26,5 +26,7 @@ WORKDIR /app/backend
 
 EXPOSE 2024
 
+# Use the lockfile-pinned CLI from node_modules — bare `npx @langchain/langgraph-cli`
+# resolves to the latest release and breaks against @langchain/langgraph@0.2.x in this repo.
 # PORT is injected by Render (or any cloud host); falls back to 2024 locally
-CMD ["sh", "-c", "npx @langchain/langgraph-cli dev --host 0.0.0.0 --port ${PORT:-2024}"]
+CMD ["sh", "-c", "../node_modules/.bin/langgraphjs dev --host 0.0.0.0 --port ${PORT:-2024}"]
