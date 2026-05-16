@@ -27,4 +27,4 @@ WORKDIR /app/backend
 EXPOSE 2024
 
 # PORT is injected by Render (or any cloud host); falls back to 2024 locally
-CMD ["sh", "-c", "node /app/node_modules/@langchain/langgraph-cli/bin/langgraph.js dev --host 0.0.0.0 --port ${PORT:-2024}"]
+CMD ["sh", "-c", "npx @langchain/langgraph-cli dev --host 0.0.0.0 --port ${PORT:-2024}"]

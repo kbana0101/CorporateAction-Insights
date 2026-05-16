@@ -2,6 +2,7 @@ import CorporateActionsTable from "./CorporateActionsTable";
 import { getCorporateActions } from "./getCorporateActions";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export default async function CorporateActionsPage() {
   let actions: string | any[] = [];

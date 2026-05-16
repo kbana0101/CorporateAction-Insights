@@ -1,36 +1,41 @@
-import { createClient } from "@supabase/supabase-js";
+import { unstable_noStore as noStore } from "next/cache";
+import {
+  createSupabaseServerClient,
+  getTodayIST,
+} from "@/lib/supabase-server";
 
-export async function getCorporateActions() {
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+const CORPORATE_ACTIONS_SELECT = `
+  id,
+  company,
+  scrip_code,
+  subject,
+  description,
+  category,
+  announcement_type,
+  attachment_url,
+  local_pdf_path,
+  announcement_datetime,
+  trading_date,
+  ingested_at
+`;
 
-  //const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-  const today = new Date().toISOString().split("T")[0];
+export async function getCorporateActions(tradingDate?: string) {
+  noStore();
+
+  const supabase = createSupabaseServerClient();
+  const date = tradingDate ?? getTodayIST();
 
   const { data, error } = await supabase
     .from("corporate_actions")
-    .select(`
-      id,
-      company,
-      scrip_code,
-      subject,
-      description,
-      category,
-      announcement_type,
-      attachment_url,
-      local_pdf_path,
-      announcement_datetime,
-      trading_date,
-      ingested_at
-    `)
-    .eq("trading_date", today)
+    .select(CORPORATE_ACTIONS_SELECT)
+    .eq("trading_date", date)
     .order("announcement_datetime", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(error.message);
+  }
 
-  return data.map((row) => ({
+  return (data ?? []).map((row) => ({
     ...row,
     is_pdf_available: Boolean(row.local_pdf_path),
     is_ingested: Boolean(row.ingested_at),
