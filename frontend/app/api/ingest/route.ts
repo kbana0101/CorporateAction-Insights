@@ -8,7 +8,7 @@ import { Document } from '@langchain/core/documents';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Configuration constants
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 1000 * 1024 * 1024; // 1000MB
 const ALLOWED_FILE_TYPES = ['application/pdf'];
 
 export async function POST(request: NextRequest) {

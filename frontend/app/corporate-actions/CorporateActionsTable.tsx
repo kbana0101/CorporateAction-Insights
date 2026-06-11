@@ -1,3 +1,5 @@
+"use client";
+
 import ActionRow from "./ActionRow";
 
 interface CorporateAction {
@@ -5,8 +7,8 @@ interface CorporateAction {
   company: string;
   subject: string;
   description: string;
-  announcement_date: string;
-  local_pdf_path: string | null;
+  announcement_datetime: string;
+  attachment_url: string | null;
   ingested_at: string | null;
 }
 

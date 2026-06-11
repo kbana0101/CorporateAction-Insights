@@ -57,7 +57,7 @@ function ChatPage() {
   subject: string;
   description: string;
   announcement_datetime: string;
-  local_pdf_path: string | null;
+  attachment_url: string | null;
   ingested_at: string | null;
   }
 
@@ -321,8 +321,8 @@ function ChatPage() {
 
             <div className="text-xs text-gray-500 mt-2">PDF</div>
             <div className="text-sm">
-              {action.local_pdf_path
-                ? action.local_pdf_path.replace(/\\/g, "/").split("/").pop()
+              {action.attachment_url
+                ? action.attachment_url.replace(/\\/g, "/").split("/").pop()
                 : "—"}
             </div>
 

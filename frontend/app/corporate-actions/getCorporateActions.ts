@@ -19,25 +19,27 @@ const CORPORATE_ACTIONS_SELECT = `
   ingested_at
 `;
 
-export async function getCorporateActions(tradingDate?: string) {
+export async function getCorporateActions(tradingDate?: string, category?: string | null) {
   noStore();
 
   const supabase = createSupabaseServerClient();
   const date = tradingDate ?? getTodayIST();
 
-  const { data, error } = await supabase
-    .from("corporate_actions")
-    .select(CORPORATE_ACTIONS_SELECT)
-    .eq("trading_date", date)
-    .order("announcement_datetime", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
+  // Build base query and apply category filter if provided
+  let query = supabase.from("corporate_actions").select(CORPORATE_ACTIONS_SELECT).eq("trading_date", date).order("announcement_datetime", { ascending: false });
+  if (category) {
+    query = query.eq("category", category);
   }
 
-  return (data ?? []).map((row) => ({
+  const { data: rows, error: qError } = await query;
+
+  if (qError) {
+    throw new Error(qError.message);
+  }
+
+  return (rows ?? []).map((row) => ({
     ...row,
-    is_pdf_available: Boolean(row.local_pdf_path),
+    is_pdf_available: Boolean(row.attachment_url),
     is_ingested: Boolean(row.ingested_at),
   }));
 }

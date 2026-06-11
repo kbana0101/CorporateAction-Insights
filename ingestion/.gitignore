@@ -5,3 +5,6 @@ __pycache__/
 data/xbrl_files/*.xml
 data/pdfs/*.pdf
 log.txt
+logs/ingest.log
+logs/*
+

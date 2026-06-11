@@ -23,7 +23,7 @@ export async function GET(req: Request) {
       company,
       subject,
       announcement_datetime,
-      local_pdf_path
+      attachment_url
     `)
     .eq("id", id)
     .single()

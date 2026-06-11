@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 interface CorporateAction {
@@ -6,14 +8,13 @@ interface CorporateAction {
   subject: string;
   description: string;
   announcement_datetime: string;
-  local_pdf_path: string | null;
+  attachment_url: string | null;
   ingested_at: string | null;
 }
 
 
 
 export default function ActionRow({ action }: { action: CorporateAction }) {
-    const BASE_PDF_DIR = "/home/kbana/code/ai-pdf-chatbot-langchain/backend/corp_action_ingestion";
   return (
     <tr className="border-t">
       <td style={{ width: "20%" }}>{action.company}</td>
@@ -23,16 +24,17 @@ export default function ActionRow({ action }: { action: CorporateAction }) {
 
       {/* 1️⃣ VIEW PDF */}
       <td className="align-middle text-center" style={{ width: "5%" }}>
-        {action.local_pdf_path ? (
+        {action.attachment_url ? (
           <a
-            href={`/api/pdf?path=${encodeURIComponent(BASE_PDF_DIR + "/" + action.local_pdf_path.replace(/\\/g, "/"))}`}
+            href={action.attachment_url}
             target="_blank"
+            rel="noopener noreferrer"
             className="text-blue-600 underline"
           >
             View
           </a>
         ) : (
-          <span className="text-gray-400">Not downloaded</span>
+          <span className="text-gray-400">Not available</span>
         )}
       </td>
       <td className="align-middle text-center" style={{ width: "5%" }}>
