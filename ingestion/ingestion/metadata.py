@@ -94,11 +94,39 @@ def insert_metadata(records):
     supabase = get_supabase_client()
     safe_records = [_serialize(r) for r in records]
 
+    # Insert corporate actions
     response = (
         supabase.table("corporate_actions").insert(safe_records).execute()
     )
     inserted = len(response.data or [])
     logger.info("Inserted %d records into corporate_actions", inserted)
+
+    # Build deduplicated companies records (one per scrip_code)
+    company_map = {}
+    for r in safe_records:
+        sc = r.get("scrip_code")
+        if not sc:
+            continue
+        if sc not in company_map:
+            company_map[sc] = {
+                "scrip_code": sc,
+                "company": r.get("company"),
+                "source": r.get("source"),
+            }
+
+    company_records = list(company_map.values())
+
+    if company_records:
+        try:
+            # Use the unique key `scrip_code` as the conflict target so Postgres
+            # performs an upsert rather than raising a duplicate-key error.
+            supabase.table("companies").upsert(
+                company_records, on_conflict="scrip_code"
+            ).execute()
+            logger.info("Upserted %d records into companies", len(company_records))
+        except Exception:
+            logger.exception("Failed to upsert companies records")
+
     return inserted
 
 
