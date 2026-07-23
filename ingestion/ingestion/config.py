@@ -29,19 +29,34 @@ def _get_int(name, default):
         return default
 
 
+def _get_bool(name, default):
+    # type: (str, bool) -> bool
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 INGEST_API_URL = os.getenv("INGEST_API_URL", "")
 
 XBRL_DIR = Path(os.getenv("XBRL_DIR", "./data/xbrl_files")).resolve()
 PDF_DIR = Path(os.getenv("PDF_DIR", "./data/pdfs")).resolve()
+PARSED_DIR = Path(os.getenv("PARSED_DIR", "./data/parsed")).resolve()
 
 PDF_DOWNLOAD_LIMIT = _get_int("PDF_DOWNLOAD_LIMIT", 500)
+PARSE_BATCH_SIZE = _get_int("PARSE_BATCH_SIZE", 10)
 INGEST_BATCH_SIZE = _get_int("INGEST_BATCH_SIZE", 5)
+
+# When true, keep the raw DoclingDocument JSON dump next to the chunks JSON.
+# Handy for debugging chunking rules; disable in prod to save disk.
+PARSED_KEEP_FULL = _get_bool("PARSED_KEEP_FULL", False)
 
 
 def ensure_dirs():
     # type: () -> None
     XBRL_DIR.mkdir(parents=True, exist_ok=True)
     PDF_DIR.mkdir(parents=True, exist_ok=True)
+    PARSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def setup_logging(level=logging.INFO):

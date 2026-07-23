@@ -4,14 +4,15 @@ Pipeline stages:
     1. Fetch BSE corporate-action announcements -> XBRL XML files.
     2. Parse XBRL -> insert metadata rows into Supabase.
     3. Download PDFs for rows missing local_pdf_path.
-    4. For rows with local PDFs but not yet ingested, POST them to the chatbot
-       ingestion API and mark ingested_at.
+    3.5. Parse PDFs with Docling and produce structure-aware chunks JSON.
+    4. For rows with parsed chunks but not yet ingested, POST them to the
+       chatbot ingestion API and mark ingested_at.
 
 Run the whole pipeline with:
     python main.py
 
 Or skip stages with flags, e.g. only re-ingest pending PDFs:
-    python main.py --skip-crawl --skip-metadata --skip-download
+    python main.py --skip-crawl --skip-metadata --skip-download --skip-parse
 """
 import argparse
 import logging
@@ -21,6 +22,7 @@ from ingestion.config import ensure_dirs, setup_logging
 from ingestion.crawler import crawl_bse_corporate_actions
 from ingestion.ingest import run as run_ingest
 from ingestion.metadata import run as run_metadata
+from ingestion.parser import run as run_parse
 from ingestion.pdfs import run as run_pdfs
 
 logger = logging.getLogger("ingestion.main")
@@ -56,9 +58,14 @@ def parse_args(argv=None):
         help="Skip stage 3 (download PDFs)",
     )
     parser.add_argument(
+        "--skip-parse",
+        action="store_true",
+        help="Skip stage 3.5 (Docling parse + chunk)",
+    )
+    parser.add_argument(
         "--skip-ingest",
         action="store_true",
-        help="Skip stage 4 (POST PDFs to ingest API)",
+        help="Skip stage 4 (POST chunks to ingest API)",
     )
     parser.add_argument(
         "--verbose",
@@ -95,8 +102,14 @@ def main(argv=None):
     else:
         logger.info("Skipping stage 3 (PDF download)")
 
+    if not args.skip_parse:
+        logger.info("=== Stage 3.5: Parse PDFs (Docling) ===")
+        run_parse()
+    else:
+        logger.info("Skipping stage 3.5 (Docling parse)")
+
     if not args.skip_ingest:
-        logger.info("=== Stage 4: Ingest PDFs into chatbot ===")
+        logger.info("=== Stage 4: Ingest chunks into chatbot ===")
         run_ingest()
     else:
         logger.info("Skipping stage 4 (ingest)")
