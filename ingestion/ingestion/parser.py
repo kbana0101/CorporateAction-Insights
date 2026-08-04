@@ -24,6 +24,7 @@ from .config import (
     PARSE_BATCH_SIZE,
     PARSED_DIR,
     PARSED_KEEP_FULL,
+    SKIP_SUBJECT_SUBSTRINGS,
     get_supabase_client,
 )
 from .paths import (
@@ -41,6 +42,7 @@ PARSE_ERROR_ENCRYPTED = "encrypted"
 PARSE_ERROR_NO_TEXT = "no_text_layer"
 PARSE_ERROR_EMPTY_CHUNKS = "empty_chunks"
 PARSE_ERROR_TIMEOUT = "docling_timeout"
+PARSE_ERROR_UNKNOWN = "unknown_error"
 
 _NON_RETRYABLE_ERRORS = {
     PARSE_ERROR_CORRUPT,
@@ -156,7 +158,9 @@ def parse_pdf(pdf_path):
             raise _ParseError(PARSE_ERROR_ENCRYPTED, str(exc))
         if "not a pdf" in msg or "invalid pdf" in msg or "eof" in msg:
             raise _ParseError(PARSE_ERROR_CORRUPT, str(exc))
-        raise _ParseError(PARSE_ERROR_TIMEOUT, str(exc))
+        if "timeout" in msg or "timed out" in msg:
+            raise _ParseError(PARSE_ERROR_TIMEOUT, str(exc))
+        raise _ParseError(PARSE_ERROR_UNKNOWN, str(exc))
 
     doc = result.document
     total_chars, page_count = _extracted_text_stats(doc)
@@ -219,7 +223,7 @@ def serialize_chunks(chunks, out_path):
 def fetch_pending_parse(limit=None):
     # type: (Optional[int]) -> List[Dict[str, Any]]
     supabase = get_supabase_client()
-    response = (
+    query = (
         supabase.table("corporate_actions")
         .select(
             "id, scrip_code, company, subject, category, "
@@ -229,9 +233,10 @@ def fetch_pending_parse(limit=None):
         .not_.is_("local_pdf_path", None)
         .is_("parsed_at", None)
         .lt("parse_attempts", 3)
-        .limit(limit or PARSE_BATCH_SIZE)
-        .execute()
     )
+    for sub in SKIP_SUBJECT_SUBSTRINGS:
+        query = query.not_.ilike("subject", "%{0}%".format(sub))
+    response = query.limit(limit or PARSE_BATCH_SIZE).execute()
     return response.data or []
 
 
@@ -323,29 +328,46 @@ def parse_one(record):
 
 def run(limit=None):
     # type: (Optional[int]) -> int
+    """Drain all pending parse rows, fetching in batches of ``limit`` at a time.
+
+    ``seen_ids`` prevents an infinite loop on rows that keep failing with a
+    retryable error — their ``parse_attempts`` bumps toward 3 across runs, but
+    within a single run they'd otherwise be re-fetched forever.
+    """
     PARSED_DIR.mkdir(parents=True, exist_ok=True)
-    records = fetch_pending_parse(limit=limit)
-    logger.info("parser: found %d PDFs to parse", len(records))
 
     parsed_ok = 0
-    for record in records:
-        row_id = record["id"]
-        try:
-            chunk_count = parse_one(record)
-            mark_parsed(row_id, chunk_count)
-            parsed_ok += 1
-            logger.info(
-                "parser: OK %s (%s) chunks=%d",
-                row_id, record.get("company"), chunk_count,
-            )
-        except _ParseError as pe:
-            logger.warning(
-                "parser: FAIL %s kind=%s detail=%s",
-                row_id, pe.kind, pe.detail,
-            )
-            mark_parse_error(row_id, pe.kind, error_detail=pe.detail)
-        except Exception:
-            logger.exception("parser: unexpected error on %s", row_id)
-            mark_parse_error(row_id, PARSE_ERROR_TIMEOUT, error_detail="unexpected exception")
+    seen_ids = set()  # type: set
+
+    while True:
+        records = fetch_pending_parse(limit=limit)
+        fresh = [r for r in records if r["id"] not in seen_ids]
+        logger.info(
+            "parser: fetched %d rows (%d new to this run)",
+            len(records), len(fresh),
+        )
+        if not fresh:
+            break
+
+        for record in fresh:
+            row_id = record["id"]
+            seen_ids.add(row_id)
+            try:
+                chunk_count = parse_one(record)
+                mark_parsed(row_id, chunk_count)
+                parsed_ok += 1
+                logger.info(
+                    "parser: OK %s (%s) chunks=%d",
+                    row_id, record.get("company"), chunk_count,
+                )
+            except _ParseError as pe:
+                logger.warning(
+                    "parser: FAIL %s kind=%s detail=%s",
+                    row_id, pe.kind, pe.detail,
+                )
+                mark_parse_error(row_id, pe.kind, error_detail=pe.detail)
+            except Exception as exc:
+                logger.exception("parser: unexpected error on %s", row_id)
+                mark_parse_error(row_id, PARSE_ERROR_UNKNOWN, error_detail=str(exc))
 
     return parsed_ok

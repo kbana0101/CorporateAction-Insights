@@ -51,6 +51,10 @@ INGEST_BATCH_SIZE = _get_int("INGEST_BATCH_SIZE", 5)
 # Handy for debugging chunking rules; disable in prod to save disk.
 PARSED_KEEP_FULL = _get_bool("PARSED_KEEP_FULL", False)
 
+# Subject substrings that mark a row as noise to skip across all pipeline
+# stages (download, parse, ingest). Case-insensitive substring match.
+SKIP_SUBJECT_SUBSTRINGS = ["Newspaper Publication"]
+
 
 def ensure_dirs():
     # type: () -> None

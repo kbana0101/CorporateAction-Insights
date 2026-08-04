@@ -333,9 +333,17 @@ def chunk_document(docling_doc, doc_metadata):
             continue
 
         if kind == "picture":
-            caption = getattr(item, "caption_text", None)
-            if callable(caption):
-                caption = caption()
+            caption_attr = getattr(item, "caption_text", None)
+            caption = None
+            if callable(caption_attr):
+                # Newer Docling requires the DoclingDocument; older versions
+                # took no args. Try the new shape first and fall back.
+                try:
+                    caption = caption_attr(docling_doc)
+                except TypeError:
+                    caption = caption_attr()
+            else:
+                caption = caption_attr
             if caption:
                 logger.debug(
                     "chunker: item#%d PICTURE with caption=%r — folding into current chunk",
