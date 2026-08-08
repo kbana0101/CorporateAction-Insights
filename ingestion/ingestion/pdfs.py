@@ -5,7 +5,12 @@ from typing import Dict, List, Optional
 
 import requests
 
-from .config import PDF_DIR, PDF_DOWNLOAD_LIMIT, get_supabase_client
+from .config import (
+    PDF_DIR,
+    PDF_DOWNLOAD_LIMIT,
+    SKIP_SUBJECT_SUBSTRINGS,
+    get_supabase_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +33,15 @@ def _clean(value, max_len=40):
 def fetch_pending_actions(limit=None):
     # type: (Optional[int]) -> List[Dict]
     supabase = get_supabase_client()
-    response = (
+    query = (
         supabase.table("corporate_actions")
         .select("*")
         .is_("local_pdf_path", None)
         .not_.is_("attachment_url", None)
-        .limit(limit or PDF_DOWNLOAD_LIMIT)
-        .execute()
     )
+    for sub in SKIP_SUBJECT_SUBSTRINGS:
+        query = query.not_.ilike("subject", "%{0}%".format(sub))
+    response = query.limit(limit or PDF_DOWNLOAD_LIMIT).execute()
     return response.data or []
 
 

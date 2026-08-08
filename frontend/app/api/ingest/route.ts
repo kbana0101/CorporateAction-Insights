@@ -3,13 +3,25 @@ export const dynamic = 'force-dynamic';
 
 import { indexConfig } from '@/constants/graphConfigs';
 import { langGraphServerClient } from '@/lib/langgraph-server';
-import { processPDF } from '@/lib/pdf';
 import { Document } from '@langchain/core/documents';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
-// Configuration constants
-const MAX_FILE_SIZE = 1000 * 1024 * 1024; // 1000MB
-const ALLOWED_FILE_TYPES = ['application/pdf'];
+// Contract: the Python ingestion service (ingestion/) POSTs already-parsed
+// and structure-aware chunks as JSON. This route no longer accepts PDF
+// uploads — PDF parsing lives on the Python side (Docling).
+const MAX_CHUNKS = 500;
+const MAX_CHUNK_TEXT_LENGTH = 32000;
+
+const ChunkSchema = z.object({
+  text: z.string().min(1).max(MAX_CHUNK_TEXT_LENGTH),
+  metadata: z.record(z.any()),
+});
+
+const RequestSchema = z.object({
+  doc_id: z.string().min(1),
+  chunks: z.array(ChunkSchema).min(1),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,98 +35,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
-    const metadataJson = formData.get('metadata') as string;
-    const files: File[] = [];
-
-    for (const [key, value] of formData.entries()) {
-      if (key === 'files' && value instanceof File) {
-        files.push(value);
-      }
-    }
-
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
-    }
-
-    /*if (!metadataJson) {
-      return NextResponse.json(
-        { error: 'Metadata is required' },
-        { status: 400 },
-      );
-    }*/
-
-    // Parse metadata JSON
-    let metadata: Record<string, any>;
+    let body: unknown;
     try {
-      metadata = JSON.parse(metadataJson);
-    } catch (error) {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: 'Invalid metadata format' },
+        { error: 'Invalid JSON body' },
         { status: 400 },
       );
     }
 
-    const docId = metadata?.doc_id ?? null;
-      
-
-    /*if (!docId) {
-      return NextResponse.json({ error: 'docId is required' }, { status: 400 });
-    }*/
-
-    // Validate file count
-    if (files.length > 5) {
+    const parsed = RequestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Too many files. Maximum 5 files allowed.' },
+        { error: 'Invalid request', details: parsed.error.flatten() },
         { status: 400 },
       );
     }
 
-    // Validate file types and sizes
-    const invalidFiles = files.filter((file) => {
-      return (
-        !ALLOWED_FILE_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE
-      );
-    });
+    const { doc_id: docId, chunks } = parsed.data;
 
-    if (invalidFiles.length > 0) {
+    if (chunks.length > MAX_CHUNKS) {
       return NextResponse.json(
         {
-          error:
-            'Only PDF files are allowed and file size must be less than 10MB',
+          error: `Too many chunks (${chunks.length} > ${MAX_CHUNKS}). ` +
+            'Re-chunk with a larger token budget or split the source document.',
         },
-        { status: 400 },
+        { status: 413 },
       );
     }
 
-    // Process all PDFs into Documents
-    const allDocs: Document[] = [];
-    for (const file of files) {
-      try {
-        const docs = await processPDF(file);
-        allDocs.push(...docs);
-      } catch (error: any) {
-        console.error(`Error processing file ${file.name}:`, error);
-        // Continue processing other files; errors are logged
-      }
-    }
+    const docs: Document[] = chunks.map((c) => ({
+      pageContent: c.text,
+      metadata: c.metadata,
+    }));
 
-    if (!allDocs.length) {
-      return NextResponse.json(
-        { error: 'No valid documents extracted from uploaded files' },
-        { status: 500 },
-      );
-    }
-
-    // Run the ingestion graph
     const thread = await langGraphServerClient.createThread();
-    const ingestionRun = await langGraphServerClient.client.runs.wait(
+    await langGraphServerClient.client.runs.wait(
       thread.thread_id,
       'ingestion_graph',
       {
-        input: {
-          docs: allDocs,
-        },
+        input: { docs },
         config: {
           configurable: {
             ...indexConfig,
@@ -125,13 +86,15 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({
-      message: 'Documents ingested successfully',
+      message: 'Chunks ingested',
+      doc_id: docId,
+      chunks_ingested: chunks.length,
       threadId: thread.thread_id,
     });
   } catch (error: any) {
-    console.error('Error processing files:', error);
+    console.error('Ingest route error:', error);
     return NextResponse.json(
-      { error: 'Failed to process files', details: error.message },
+      { error: 'Failed to ingest chunks', details: error?.message },
       { status: 500 },
     );
   }
